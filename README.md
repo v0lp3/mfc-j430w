@@ -1,4 +1,4 @@
-# Brother MFC-J430W open driver (scanner)
+# Brother MFC-J430W open driver (wifi scanner)
 
 ## Reasons
 
