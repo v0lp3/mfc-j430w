@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -73,6 +74,30 @@ func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) {
 	log.Println("Scanning started...")
 }
 
+func GetScan(socket net.Conn) {
+	log.Println("Getting packets...")
+
+	err := socket.SetReadDeadline(time.Now().Add(time.Second * 5))
+	HandleError(err)
+
+	scan := make([]byte, 0)
+
+	for true {
+		packet := make([]byte, 2048)
+		_, err := socket.Read(packet)
+
+		if err.(net.Error).Timeout() {
+			break
+		}
+
+		HandleError(err)
+
+		scan = append(scan, packet...)
+	}
+
+	println(string(scan))
+}
+
 func HandleError(err error) {
 
 	if err != nil {
@@ -96,7 +121,7 @@ func SendPacket(socket net.Conn, packet []byte) {
 }
 
 func ReadPacket(socket net.Conn) string {
-	reply := make([]byte, 128)
+	reply := make([]byte, 64)
 
 	_, err := socket.Read(reply)
 	HandleError(err)
