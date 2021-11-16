@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"log"
@@ -17,6 +18,7 @@ func main() {
 	resolution := flag.Int("r", 300, "Resolution of the scan")
 	color := flag.String("c", "CGRAY", "Color mode of the scan")
 	adf := flag.Bool("m", false, "Enable scan of all pages from feeder")
+	name := flag.String("n", "scan.jpg", "Name of the output file")
 
 	flag.Parse()
 
@@ -32,12 +34,15 @@ func main() {
 
 	defer socket.Close()
 
-	SendRequest(socket, *resolution, *color, *adf)
+	width, heigth := SendRequest(socket, *resolution, *color, *adf)
 
-	defer GetScanBytes(socket)
+	bytes := GetScanBytes(socket)
+
+	rawImage := RemoveHeaders(bytes)
+
 }
 
-func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) (string, string) {
+func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, int) {
 
 	mode, compression := GetCompressionMode(_mode)
 
@@ -69,14 +74,18 @@ func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) (strin
 
 	offerOptions := strings.Split(offer, ",")
 
+	width, height := 0, 0
+	fmt.Sscanf(offerOptions[4], "%d", &width)
+	fmt.Sscanf(offerOptions[6], "%d", &height)
+
 	requestFormat := "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%v,%v\n\x80"
 
-	request = []byte(fmt.Sprintf(requestFormat, offerOptions[1], offerOptions[1], mode, compression, offerOptions[4], offerOptions[6]))
+	request = []byte(fmt.Sprintf(requestFormat, offerOptions[1], offerOptions[1], mode, compression, width, height))
 	SendPacket(socket, request)
 
 	log.Println("Scanning started...")
 
-	return offerOptions[4], offerOptions[6]
+	return width, height
 }
 
 func GetScanBytes(socket net.Conn) []byte {
@@ -122,6 +131,22 @@ func GetCompressionMode(_mode string) (string, string) {
 	} else {
 		return "CGRAY", "JPEG"
 	}
+}
+
+func RemoveHeaders(scan []byte) []byte {
+	log.Println("Removing headers from bytes...")
+
+	const headerLen int = 12
+
+	payloadLen := binary.LittleEndian.Uint16(scan[headerLen-2 : headerLen])
+	chunkSize := int(payloadLen) + headerLen
+	scanOutput := make([]byte, 0)
+
+	for i := 0; i < len(scan)-chunkSize; i += chunkSize {
+		scanOutput = append(scanOutput, scan[i+headerLen:i+chunkSize]...)
+	}
+
+	return scanOutput
 }
 
 func SendPacket(socket net.Conn, packet []byte) {
