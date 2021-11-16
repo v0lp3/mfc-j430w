@@ -2,27 +2,27 @@
 
 ## Reasons
 
-_Brother MFC-J430W has already scanner driver and you can download [here](https://support.brother.com/g/b/downloadtop.aspx?c=it&lang=it&prod=mfcj430w_all)_ **but that are prebuilt binary (x86/x64) and source code isn't public**. My problem was that I wanted use scanner in my RPi4 but **those driver not works on ARM architecture**. In the end I solved this issue throught workaround using a vps... recently I resumed the project and I found a solution (partially thanks to [this](https://github.com/davidar/mfc7400c/)) and imho I think this is better than any workaround. I think that this should work on every scanner that use **brscan4**
+_Brother MFC-J430W has already scanner driver and you can download [here](https://support.brother.com/g/b/downloadtop.aspx?c=it&lang=it&prod=mfcj430w_all)_ **but that are prebuilt binary (x86/x64) and source code isn't public**. My problem was that I wanted use scanner in my RPi4 but **those driver not works on ARM architecture**. In the end I solved this issue throught workaround using a vps... recently I resumed the project and I found a solution (partially thanks to [this](https://github.com/davidar/mfc7400c/)) and imho I think this is better than any workaround. I think that this should work on every scanner that use `brscan4`
 
 ## Scanner protocol
 
 ![protocol](./docs/protocol.png)
 
-### Status code
+### Status codes
 
 When we open a connection with the scanner on port 54921, it respond with his status code:
 
-- **+OK 200**: Ready to use
-- **-401**: Scanner is busy
+- `-401`: Scanner is busy
+- `+OK 200`: Ready to use
 
-### Leasing
+### Lease
 
 Now we can send a request that specify resolution and color mode, then scanner send to client a offer based on request.
 
 Request:
 
 ```go
-request := []byte(fmt.Sprintf("\x1bI\nR=300,300\nM=GRAY64\n\x80", resolution, resolution, mode))
+request := []byte(fmt.Sprintf("\x1bI\nR=%d,%d\nM=%s\n\x80", resolution, resolution, mode))
 sendPacket(socket, request)
 ```
 
@@ -41,7 +41,7 @@ Response:
 - **CGRAY**: color image
 
 Resolution are **100, 150, 300, 600, 1200, 2400**.
-I called this part `leasing` because it recalled me _DHCP leasing_
+I called this part `leasing` because it recalled me _DHCP lease_
 
 ### Automatic document feeder
 
