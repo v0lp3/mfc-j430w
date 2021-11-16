@@ -10,9 +10,37 @@ Brother MFC-J430W has already scanner driver and you can download [here](https:/
 
 Documentation work in progress....
 
-## To do:
+## Compile
 
-- [ ] ADF multi page scanner
-- [ ] Image compression flag
-- [ ] Option to customize brightness and contrast
-  
+```bash
+git clone https://github.com/v0lp3/mfc-j430w.git
+go build -o mfc-j430w mfc-j430w/src/*.go
+```
+
+## Usage
+
+```bash
+./mfc-j430w --help
+```
+
+Output:
+
+```bash
+Usage of ./mfc-j430w:
+  -a string
+        IP address of the Brother scanner (default "192.168.0.157")
+  -c string
+        Color mode of the scan (CGRAY, GRAY64) (default "CGRAY")
+  -m    Enable scan of all pages from feeder
+  -n string
+        Name of the output file (default "scan.jpg")
+  -r int
+        Resolution of the scan (default 300)
+```
+
+## To do
+
+- [ ] Integrate with SANE
+- [ ] Implement multi page scan for ADF
+- [ ] Add flag to output compressed image
+- [ ] Add flag to customize brightness and contrast
