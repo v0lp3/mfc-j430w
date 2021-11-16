@@ -11,7 +11,7 @@ func main() {
 
 	brotherIP := flag.String("a", "192.168.0.157", "IP address of the Brother scanner")
 	resolution := flag.Int("r", 300, "Resolution of the scan")
-	color := flag.String("c", "CGRAY", "Color mode of the scan")
+	color := flag.String("c", "CGRAY", "Color mode of the scan (CGRAY, GRAY64)")
 	adf := flag.Bool("m", false, "Enable scan of all pages from feeder")
 	name := flag.String("n", "scan.jpg", "Name of the output file")
 
