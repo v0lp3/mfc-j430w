@@ -33,9 +33,11 @@ func main() {
 	defer socket.Close()
 
 	SendRequest(socket, *resolution, *color, *adf)
+
+	defer GetScanBytes(socket)
 }
 
-func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) {
+func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) (string, string) {
 
 	mode, compression := GetCompressionMode(_mode)
 
@@ -68,34 +70,41 @@ func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) {
 	offerOptions := strings.Split(offer, ",")
 
 	requestFormat := "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%v,%v\n\x80"
-	request = []byte(fmt.Sprintf(requestFormat, offerOptions[1], offerOptions[1], mode, compression, offerOptions[5], offerOptions[6]))
+
+	request = []byte(fmt.Sprintf(requestFormat, offerOptions[1], offerOptions[1], mode, compression, offerOptions[4], offerOptions[6]))
 	SendPacket(socket, request)
 
 	log.Println("Scanning started...")
+
+	return offerOptions[4], offerOptions[6]
 }
 
-func GetScan(socket net.Conn) {
+func GetScanBytes(socket net.Conn) []byte {
 	log.Println("Getting packets...")
 
-	err := socket.SetReadDeadline(time.Now().Add(time.Second * 5))
-	HandleError(err)
+	packet := make([]byte, 2048)
+	scanBytes := make([]byte, 0)
 
-	scan := make([]byte, 0)
-
+readPackets:
 	for {
-		packet := make([]byte, 2048)
-		_, err := socket.Read(packet)
+		socket.SetDeadline(time.Now().Add(time.Second * 5))
+		bytes, err := socket.Read(packet)
 
-		if err.(net.Error).Timeout() {
-			break
+		switch err := err.(type) {
+		case net.Error:
+			if err.Timeout() {
+				break readPackets
+			}
+
+		case nil:
+			scanBytes = append(scanBytes, packet[:bytes]...)
+
+		default:
+			HandleError(err)
 		}
-
-		HandleError(err)
-
-		scan = append(scan, packet...)
 	}
 
-	println(string(scan))
+	return scanBytes
 }
 
 func HandleError(err error) {
