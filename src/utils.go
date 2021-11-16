@@ -7,12 +7,12 @@ import (
 	"os"
 )
 
-func SendPacket(socket net.Conn, packet []byte) {
+func sendPacket(socket net.Conn, packet []byte) {
 	_, err := socket.Write(packet)
 	HandleError(err)
 }
 
-func ReadPacket(socket net.Conn) string {
+func readPacket(socket net.Conn) string {
 	reply := make([]byte, 64)
 
 	_, err := socket.Read(reply)
@@ -29,7 +29,7 @@ func HandleError(err error) {
 	}
 }
 
-func GetCompressionMode(_mode string) (string, string) {
+func getCompressionMode(_mode string) (string, string) {
 
 	if _mode == "GRAY64" {
 		return _mode, "NONE"

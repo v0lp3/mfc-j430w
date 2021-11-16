@@ -21,20 +21,20 @@ func Scan(brotherIP string, brotherPort int, resolution int, color string, adf b
 
 	defer socket.Close()
 
-	width, heigth := SendRequest(socket, resolution, color, adf)
+	width, heigth := sendRequest(socket, resolution, color, adf)
 
-	bytes := GetScanBytes(socket)
+	bytes := getScanBytes(socket)
 
-	return RemoveHeaders(bytes), width, heigth
+	return removeHeaders(bytes), width, heigth
 }
 
-func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, int) {
+func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, int) {
 
-	mode, compression := GetCompressionMode(_mode)
+	mode, compression := getCompressionMode(_mode)
 
 	log.Println("Reading scanner status...")
 
-	status := ReadPacket(socket)[:7]
+	status := readPacket(socket)[:7]
 
 	if status != "+OK 200" {
 		HandleError(fmt.Errorf("invalid reply from scanner: %s", status))
@@ -43,17 +43,17 @@ func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, 
 	log.Println("Leasing options...")
 
 	request := []byte(fmt.Sprintf("\x1bI\nR=%d,%d\nM=%s\n\x80", resolution, resolution, mode))
-	SendPacket(socket, request)
+	sendPacket(socket, request)
 
-	offer := ReadPacket(socket)
+	offer := readPacket(socket)
 
 	if !adf {
 		log.Println("Disabling automatic document feeder (ADF)")
 
 		request = []byte("\x1bD\nADF\n\x80")
-		SendPacket(socket, request)
+		sendPacket(socket, request)
 
-		ReadPacket(socket)
+		readPacket(socket)
 	}
 
 	log.Println("Sending scan request...")
@@ -67,14 +67,14 @@ func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, 
 	requestFormat := "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%v,%v\n\x80"
 
 	request = []byte(fmt.Sprintf(requestFormat, offerOptions[1], offerOptions[1], mode, compression, width, height))
-	SendPacket(socket, request)
+	sendPacket(socket, request)
 
 	log.Println("Scanning started...")
 
 	return width, height
 }
 
-func GetScanBytes(socket net.Conn) []byte {
+func getScanBytes(socket net.Conn) []byte {
 	log.Println("Getting packets...")
 
 	packet := make([]byte, 2048)
@@ -106,7 +106,7 @@ func SaveImage(data []byte, width int, height int, name string, color string) {
 
 	log.Println("Saving image...")
 
-	_, compression := GetCompressionMode(color)
+	_, compression := getCompressionMode(color)
 
 	if compression != "JPEG" {
 
@@ -134,7 +134,7 @@ func SaveImage(data []byte, width int, height int, name string, color string) {
 	}
 }
 
-func RemoveHeaders(scan []byte) []byte {
+func removeHeaders(scan []byte) []byte {
 	log.Println("Removing headers from bytes...")
 
 	const headerLen int = 12
