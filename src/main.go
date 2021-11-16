@@ -21,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	if net.ParseIP(*brotherIP) == nil {
-		HandleError(fmt.Errorf("Invalid IP address: %s", *brotherIP))
+		HandleError(fmt.Errorf("invalid IP address: %s", *brotherIP))
 	}
 
 	log.Println("Valid IP address, opening socket...")
@@ -43,8 +43,8 @@ func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) {
 
 	status := ReadPacket(socket)[:7]
 
-	if "+OK 200" != status {
-		HandleError(fmt.Errorf("Invalid reply from scanner: %s", status))
+	if status != "+OK 200" {
+		HandleError(fmt.Errorf("invalid reply from scanner: %s", status))
 	}
 
 	log.Println("Leasing options...")
@@ -54,8 +54,8 @@ func SendRequest(socket net.Conn, resolution int, _mode string, adf bool) {
 
 	offer := ReadPacket(socket)
 
-	if adf {
-		log.Println("Enabling automatic document feeder (ADF)")
+	if !adf {
+		log.Println("Disabling automatic document feeder (ADF)")
 
 		request = []byte("\x1bD\nADF\n\x80")
 		SendPacket(socket, request)
@@ -82,7 +82,7 @@ func GetScan(socket net.Conn) {
 
 	scan := make([]byte, 0)
 
-	for true {
+	for {
 		packet := make([]byte, 2048)
 		_, err := socket.Read(packet)
 
