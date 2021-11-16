@@ -4,6 +4,9 @@ import (
 	"encoding/binary"
 	"flag"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"log"
 	"net"
 	"os"
@@ -39,6 +42,8 @@ func main() {
 	bytes := GetScanBytes(socket)
 
 	rawImage := RemoveHeaders(bytes)
+
+	SaveImage(rawImage, width, heigth, *name, *color)
 
 }
 
@@ -114,6 +119,38 @@ readPackets:
 	}
 
 	return scanBytes
+}
+
+func SaveImage(data []byte, width int, height int, name string, color string) {
+
+	log.Println("Saving image...")
+
+	_, compression := GetCompressionMode(color)
+
+	if compression != "JPEG" {
+
+		img := image.NewGray(image.Rectangle{
+			image.Point{0, 0},
+			image.Point{width, height},
+		})
+
+		for y := 0; y < height-40; y++ {
+
+			for x := 0; x < width; x++ {
+				img.SetGray(x, y, colorToGray(data[y*width+x]))
+			}
+		}
+
+		file, _ := os.Create(name)
+		png.Encode(file, img)
+
+	} else {
+		os.WriteFile(name, data, 0644)
+	}
+}
+
+func colorToGray(byte byte) color.Gray {
+	return color.Gray{Y: byte}
 }
 
 func HandleError(err error) {
