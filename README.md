@@ -4,7 +4,7 @@
 
 _Brother MFC-J430W has already scanner driver and you can download [here](https://support.brother.com/g/b/downloadtop.aspx?c=it&lang=it&prod=mfcj430w_all)_ **but that are prebuilt binary (x86/x64) and source code isn't public**. This is a problem if you want to use the scanner on ARM architecture, because if you don't have the source code of the driver you can't recompile it. Anyway this should work on every scanner that use `brscan4`, but I'm not sure.
 
-## Scanner protocol
+## Scanning protocol
 
 ![protocol](./docs/protocol.png)
 
