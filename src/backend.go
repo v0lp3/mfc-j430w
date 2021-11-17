@@ -62,8 +62,13 @@ func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, 
 	width, height := 0, 0
 	planeWidth, planeHeight := 0, 0
 	dpiX, dpiY := 0, 0
+	adfStatus := 0
 
-	fmt.Sscanf(offer[3:], "%d,%d,2,%d,%d,%d,%d", &dpiX, &dpiY, &planeWidth, &width, &planeHeight, &height)
+	fmt.Sscanf(offer[3:], "%d,%d,%d,%d,%d,%d,%d", &dpiX, &dpiY, &adfStatus, &planeWidth, &width, &planeHeight, &height)
+
+	if planeHeight == 0 {
+		planeHeight = 294
+	}
 
 	width = mmToPixels(planeWidth, dpiX)
 	height = mmToPixels(planeHeight, dpiY)
