@@ -31,9 +31,9 @@ sendPacket(socket, request)
 
 `300,300,2,209,2480,294,3472`
 
-- `response[0]` `response[1]`: Resolution
+- `response[0]` `response[1]`: Image DPI
 - `response[3]` `response[5]`: Plane dimensions in _mm_
-- `response[4]` `response[6]`: Plane dimensions in _px_
+- `response[4]` `response[6]`: Image resolution in _px_
 - `response[2]`: ?
 
 ##### COLOR MODES
@@ -72,7 +72,7 @@ Now we are ready to send start scan request:
 requestFormat := "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%v,%v\n\x80"
 ```
 
-- **R** = `X_RES`, `Y_WIDTH`
+- **R** = `X_DPI`, `Y_DPI`
 - **M** = `CGRAY` or `GRAY64`
 - **C** = `JPEG` or `RLENGTH` or `NONE`
 - **J** = MID
