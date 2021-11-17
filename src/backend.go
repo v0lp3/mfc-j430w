@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -60,15 +59,18 @@ func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, 
 
 	log.Println("Sending scan request...")
 
-	offerOptions := strings.Split(offer, ",")
-
 	width, height := 0, 0
-	fmt.Sscanf(offerOptions[4], "%d", &width)
-	fmt.Sscanf(offerOptions[6], "%d", &height)
+	planeWidth, planeHeight := 0, 0
+	dpiX, dpiY := 0, 0
 
-	requestFormat := "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%v,%v\n\x80"
+	fmt.Sscanf(offer[3:], "%d,%d,2,%d,%d,%d,%d", &dpiX, &dpiY, &planeWidth, &width, &planeHeight, &height)
 
-	request = []byte(fmt.Sprintf(requestFormat, offerOptions[1], offerOptions[1], mode, compression, width, height))
+	width = mmToPixels(planeWidth, dpiX)
+	height = mmToPixels(planeHeight, dpiY)
+
+	requestFormat := "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%d,%d\n\x80"
+	request = []byte(fmt.Sprintf(requestFormat, dpiX, dpiY, mode, compression, width, height))
+
 	sendPacket(socket, request)
 
 	log.Println("Scanning started...")
@@ -84,7 +86,7 @@ func getScanBytes(socket net.Conn) ([]byte, error) {
 
 readPackets:
 	for {
-		socket.SetDeadline(time.Now().Add(time.Second * 5))
+		socket.SetDeadline(time.Now().Add(time.Second * 10))
 		bytes, err := socket.Read(packet)
 
 		switch err := err.(type) {
@@ -121,10 +123,9 @@ func SaveImage(data []byte, width int, height int, name string, color string) {
 			image.Point{width, height},
 		})
 
-		for y := 0; y < height-40; y++ {
-
+		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
-				img.SetGray(x, y, colorToGray(data[y*width+x]))
+				img.SetGray(x, y, colorToGray(data[(y*width+x)%len(data)]))
 			}
 		}
 

@@ -38,6 +38,10 @@ func getCompressionMode(_mode string) (string, string) {
 	}
 }
 
+func mmToPixels(mm int, dpi int) int {
+	return int(float64(mm*dpi) / 25.4)
+}
+
 func colorToGray(value byte) color.Gray {
 	return color.Gray{Y: value}
 }
