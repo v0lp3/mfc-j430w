@@ -85,15 +85,13 @@ request = []byte(fmt.Sprintf(requestFormat, dpiX, dpiY, mode, compression, width
 - **N** = 50 (Contrast?)
 - **A** = 0,0,`WIDTH`, `HEIGHT`
 
-Note that `WIDTH` and `HEIGHT` are calculated from plane dimensions
+**NOTE**: `WIDTH` and `HEIGHT` are calculated from plane dimensions because _width_ received from response in [lease phase](#lease) is different from _width calculated_
 
 ```go
 func mmToPixels(mm int, dpi int) int {
-  return int(float64(mm*dpi) / 25.4)
+      return int(float64(mm*dpi) / 25.4)
 }
 ```
-
-**NOTE**: _width_ received from response in [lease phase](#lease) is different from _width calculated_.
 
 Documentation work in progress...
 
