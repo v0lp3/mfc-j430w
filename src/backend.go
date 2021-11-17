@@ -23,7 +23,9 @@ func Scan(brotherIP string, brotherPort int, resolution int, color string, adf b
 
 	width, heigth := sendRequest(socket, resolution, color, adf)
 
-	bytes := getScanBytes(socket)
+	bytes, err := getScanBytes(socket)
+
+	HandleError(err)
 
 	return removeHeaders(bytes), width, heigth
 }
@@ -74,7 +76,7 @@ func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, 
 	return width, height
 }
 
-func getScanBytes(socket net.Conn) []byte {
+func getScanBytes(socket net.Conn) ([]byte, error) {
 	log.Println("Getting packets...")
 
 	packet := make([]byte, 2048)
@@ -99,7 +101,11 @@ readPackets:
 		}
 	}
 
-	return scanBytes
+	if (len(scanBytes)) < 1 {
+		return scanBytes, fmt.Errorf("no data received")
+	}
+
+	return scanBytes, nil
 }
 
 func SaveImage(data []byte, width int, height int, name string, color string) {
