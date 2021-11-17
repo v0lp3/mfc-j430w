@@ -31,10 +31,11 @@ sendPacket(socket, request)
 
 `300,300,2,209,2480,294,3472`
 
+##### (X,Y)
+
 - `response[0]` `response[1]`: Image DPI
 - `response[3]` `response[5]`: Plane dimensions in _mm_
 - `response[4]` `response[6]`: Image resolution in _px_
-- `response[2]`: ?
 
 ##### COLOR MODES
 
@@ -69,7 +70,11 @@ if !adf {
 Now we are ready to send start scan request:
 
 ```go
-requestFormat := "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%v,%v\n\x80"
+width = mmToPixels(planeWidth, dpiX)
+height = mmToPixels(planeHeight, dpiY)
+
+requestFormat := "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%d,%d\n\x80"
+request = []byte(fmt.Sprintf(requestFormat, dpiX, dpiY, mode, compression, width, height))
 ```
 
 - **R** = `X_DPI`, `Y_DPI`
@@ -79,6 +84,16 @@ requestFormat := "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%v,%v\n\x
 - **B** = 50 (Brightness?)
 - **N** = 50 (Contrast?)
 - **A** = 0,0,`WIDTH`, `HEIGHT`
+
+Note that `WIDTH` and `HEIGHT` are calculated from plane dimensions
+
+```go
+func mmToPixels(mm int, dpi int) int {
+  return int(float64(mm*dpi) / 25.4)
+}
+```
+
+**NOTE**: _width_ received from response in [lease phase](#lease) is different from _width calculated_.
 
 Documentation work in progress...
 
