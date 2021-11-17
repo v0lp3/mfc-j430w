@@ -38,6 +38,6 @@ func getCompressionMode(_mode string) (string, string) {
 	}
 }
 
-func colorToGray(byte byte) color.Gray {
-	return color.Gray{Y: byte}
+func colorToGray(value byte) color.Gray {
+	return color.Gray{Y: value}
 }
