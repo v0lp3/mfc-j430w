@@ -21,7 +21,9 @@ func main() {
 		HandleError(fmt.Errorf("invalid IP address: %s", *brotherIP))
 	}
 
-	rawImage, width, heigth := Scan(*brotherIP, brotherPort, *resolution, *color, *adf)
+	rawImages, width, heigth := Scan(*brotherIP, brotherPort, *resolution, *color, *adf)
 
-	SaveImage(rawImage, width, heigth, *name, *color)
+	for i, rawImage := range rawImages {
+		SaveImage(rawImage, width, heigth, fmt.Sprintf("%s(%d)", *name, i), *color)
+	}
 }

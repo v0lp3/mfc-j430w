@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func Scan(brotherIP string, brotherPort int, resolution int, color string, adf bool) ([]byte, int, int) {
+func Scan(brotherIP string, brotherPort int, resolution int, color string, adf bool) ([][]byte, int, int) {
 	log.Println("Valid IP address, opening socket...")
 
 	socket, err := net.Dial("tcp", fmt.Sprintf("%s:%d", brotherIP, brotherPort))
@@ -146,18 +146,42 @@ func SaveImage(data []byte, width int, height int, name string, color string) {
 	}
 }
 
-func removeHeaders(scan []byte) []byte {
+func removeHeaders(data []byte) [][]byte {
 	log.Println("Removing headers from bytes...")
 
 	const headerLen int = 12
 
-	payloadLen := binary.LittleEndian.Uint16(scan[headerLen-2 : headerLen])
-	chunkSize := int(payloadLen) + headerLen
-	scanOutput := make([]byte, 0)
+	pages := make([][]byte, 0)
+	page := make([]byte, 0)
 
-	for i := 0; i < len(scan)-chunkSize; i += chunkSize {
-		scanOutput = append(scanOutput, scan[i+headerLen:i+chunkSize]...)
+	currentPage := 1
+	i := 0
+
+headersLoop:
+	for {
+		if data[i] == 0x82 {
+			log.Println("Parsed page", currentPage)
+			pages = append(pages, page)
+
+			if len(data) > i+10 && data[i+10] == 0x80 {
+				break headersLoop
+			}
+
+			page = make([]byte, 0)
+
+			currentPage++
+
+			i += headerLen - 2
+			continue headersLoop
+		}
+
+		payloadLen := binary.LittleEndian.Uint16(data[i+headerLen-2 : i+headerLen])
+		chunkSize := int(payloadLen) + headerLen
+
+		page = append(page, data[i+headerLen:i+chunkSize]...)
+
+		i += chunkSize
 	}
 
-	return scanOutput
+	return pages
 }
