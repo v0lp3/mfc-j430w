@@ -24,6 +24,11 @@ func main() {
 	rawImages, width, heigth := Scan(*brotherIP, brotherPort, *resolution, *color, *adf)
 
 	for i, rawImage := range rawImages {
-		SaveImage(rawImage, width, heigth, fmt.Sprintf("%s(%d)", *name, i), *color)
+		if i == len(rawImages)-1 {
+			SaveImage(rawImage, width, heigth, fmt.Sprintf("%s(%d)", *name, i), *color)
+
+		} else {
+			go SaveImage(rawImage, width, heigth, fmt.Sprintf("%s(%d)", *name, i), *color)
+		}
 	}
 }
