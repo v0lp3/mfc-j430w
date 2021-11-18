@@ -31,6 +31,8 @@ sendPacket(socket, request)
 
 `300,300,2,209,2480,294,3472`
 
+- `response[2]` : ADF status
+
 ##### (X,Y)
 
 - `response[0]` `response[1]`: Image DPI
@@ -43,19 +45,23 @@ sendPacket(socket, request)
 - **CGRAY**: color image
 - **TEXT**: low resolution mode, **max output (304x434)** [not implemented]
 
-##### RESOLUTIONS
+##### RESOLUTIONS A4
 
-- 100
-- 150
-- 300
-- 600
-- 1200
-- 2400
+- 100x100
+- 150x150
+- 300x300
+- 600x600
+- 1200x1200
+- 1200x2400
+
+##### ADF Status
+
+- 1 ADF enabled
+- 2 ADF disabled
 
 ### Automatic document feeder
 
-If specified **it's possible** to disable ADF and **scan only one page**.
-Omit this if you want use ADF.
+I think this is the request to disable ADF and **scan only one page**, though It's no effective.
 
 ```go
 if !adf {
@@ -89,7 +95,7 @@ request = []byte(fmt.Sprintf(requestFormat, dpiX, dpiY, mode, compression, width
 
 ```go
 func mmToPixels(mm int, dpi int) int {
-      return int(float64(mm*dpi) / 25.4)
+  return int(float32(mm*dpi) / scanner.mmInch)
 }
 ```
 
@@ -125,7 +131,8 @@ Usage of ./mfc-j430w:
 
 ## To do
 
-- [ ] Implement multi page scan for ADF
+- [x] Implement multi page scan for ADF
+- [ ] Improve ADF scan with multithread
 - [ ] Add flag to output compressed image
 
 ## Credits
