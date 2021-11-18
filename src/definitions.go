@@ -27,6 +27,13 @@ type constants struct {
 	endScan     byte
 }
 
+type settings struct {
+	width  int
+	height int
+	mode   string
+	encode string
+}
+
 var scanner constants = constants{
 	ready: "+OK 200",
 	mode: modes{
@@ -49,3 +56,5 @@ var formats requests = requests{
 	disableADF:   "\x1bD\nADF\n\x80",
 	scanRequest:  "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%d,%d\n\x80",
 }
+
+var preferences settings

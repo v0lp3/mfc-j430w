@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func Scan(brotherIP string, brotherPort int, resolution int, color string, adf bool) ([][]byte, int, int) {
+func Scan(brotherIP string, brotherPort int, resolution int, color string, adf bool, name string) {
 	log.Println("Valid IP address, opening socket...")
 
 	socket, err := net.Dial("tcp", fmt.Sprintf("%s:%d", brotherIP, brotherPort))
@@ -20,18 +20,16 @@ func Scan(brotherIP string, brotherPort int, resolution int, color string, adf b
 
 	defer socket.Close()
 
-	width, heigth := sendRequest(socket, resolution, color, adf)
+	sendRequest(socket, resolution, color, adf)
 
-	bytes, err := getScanBytes(socket)
+	processResponse(socket, name)
 
 	HandleError(err)
-
-	return removeHeaders(bytes), width, heigth
 }
 
-func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, int) {
+func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) {
 
-	mode, compression := getCompressionMode(_mode)
+	preferences.mode, preferences.encode = getCompressionMode(_mode)
 
 	log.Println("Reading scanner status...")
 
@@ -43,7 +41,7 @@ func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, 
 
 	log.Println("Leasing options...")
 
-	request := []byte(fmt.Sprintf(formats.leaseRequest, resolution, resolution, mode))
+	request := []byte(fmt.Sprintf(formats.leaseRequest, resolution, resolution, preferences.mode))
 	sendPacket(socket, request)
 
 	offer := readPacket(socket)
@@ -64,29 +62,32 @@ func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, 
 	dpiX, dpiY := 0, 0
 	adfStatus := 0
 
-	fmt.Sscanf(offer[3:], "%d,%d,%d,%d,%d,%d,%d", &dpiX, &dpiY, &adfStatus, &planeWidth, &width, &planeHeight, &height)
+	fmt.Sscanf(offer[3:], "%d,%d,%d,%d,%d,%d,%d", &dpiX, &dpiY, &adfStatus, &planeWidth,
+		&width, &planeHeight, &height)
 
 	if planeHeight == 0 {
 		planeHeight = scanner.A4height
 	}
 
-	width = mmToPixels(planeWidth, dpiX)
-	height = mmToPixels(planeHeight, dpiY)
+	preferences.width = mmToPixels(planeWidth, dpiX)
+	preferences.height = mmToPixels(planeHeight, dpiY)
 
-	request = []byte(fmt.Sprintf(formats.scanRequest, dpiX, dpiY, mode, compression, width, height))
+	request = []byte(fmt.Sprintf(formats.scanRequest, dpiX, dpiY, preferences.mode,
+		preferences.encode, preferences.width, preferences.height))
 
 	sendPacket(socket, request)
 
 	log.Println("Scanning started...")
-
-	return width, height
 }
 
-func getScanBytes(socket net.Conn) ([]byte, error) {
+func processResponse(socket net.Conn, name string) {
 	log.Println("Getting packets...")
 
 	packet := make([]byte, 2048)
 	scanBytes := make([]byte, 0)
+
+	headerPos := 0
+	currentPage := 1
 
 readPackets:
 	for {
@@ -100,7 +101,29 @@ readPackets:
 			}
 
 		case nil:
+
 			scanBytes = append(scanBytes, packet[:bytes]...)
+
+			if len(scanBytes) > headerPos {
+				if scanBytes[headerPos] == scanner.endPage {
+
+					if len(scanBytes) > (headerPos+10) && scanBytes[headerPos+10] == scanner.endScan {
+						processPacket(scanBytes, name, currentPage)
+						break readPackets
+					}
+
+					go processPacket(scanBytes, name, currentPage)
+					scanBytes = make([]byte, 0)
+
+					headerPos = 0
+					currentPage++
+
+					continue readPackets
+				}
+
+				payloadLen := binary.LittleEndian.Uint16(scanBytes[headerPos+scanner.headerLen-2 : headerPos+scanner.headerLen])
+				headerPos += int(payloadLen) + scanner.headerLen
+			}
 
 		default:
 			HandleError(err)
@@ -108,17 +131,17 @@ readPackets:
 	}
 
 	if (len(scanBytes)) < 1 {
-		return scanBytes, fmt.Errorf("no data received")
+		HandleError(fmt.Errorf("no data received"))
 	}
-
-	return scanBytes, nil
 }
 
-func SaveImage(data []byte, width int, height int, name string, color string) {
+func SaveImage(data []byte, name string) {
 
-	log.Println("Saving image...")
+	log.Printf("Saving image %s...", name)
 
-	_, compression := getCompressionMode(color)
+	_, compression := getCompressionMode(preferences.mode)
+	width := preferences.width
+	height := preferences.height
 
 	if compression != scanner.compression.jpeg {
 
@@ -145,30 +168,16 @@ func SaveImage(data []byte, width int, height int, name string, color string) {
 	}
 }
 
-func removeHeaders(data []byte) [][]byte {
-	log.Println("Removing headers from bytes...")
+func processPacket(data []byte, name string, currentPage int) {
+	log.Printf("Removing headers from page %d...\n", currentPage)
 
-	pages := make([][]byte, 0)
-	page := make([]byte, 0)
-
-	currentPage := 1
 	i := 0
+	page := make([]byte, 0)
 
 headersLoop:
 	for {
 		if data[i] == scanner.endPage {
-			pages = append(pages, page)
-
-			if len(data) > i+10 && data[i+10] == scanner.endScan {
-				break headersLoop
-			}
-
-			page = make([]byte, 0)
-
-			currentPage++
-
-			i += scanner.headerLen - 2
-			continue headersLoop
+			break headersLoop
 		}
 
 		payloadLen := binary.LittleEndian.Uint16(data[i+scanner.headerLen-2 : i+scanner.headerLen])
@@ -179,5 +188,5 @@ headersLoop:
 		i += chunkSize
 	}
 
-	return pages
+	SaveImage(page, fmt.Sprintf("%s(%d)", name, currentPage))
 }
