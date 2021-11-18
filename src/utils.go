@@ -31,15 +31,15 @@ func HandleError(err error) {
 
 func getCompressionMode(_mode string) (string, string) {
 
-	if _mode == "GRAY64" {
-		return _mode, "NONE"
+	if _mode == scanner.mode.grayscale {
+		return _mode, scanner.compression.none
 	} else {
-		return "CGRAY", "JPEG"
+		return scanner.mode.color, scanner.compression.jpeg
 	}
 }
 
 func mmToPixels(mm int, dpi int) int {
-	return int(float64(mm*dpi) / 25.4)
+	return int(float32(mm*dpi) / scanner.mmInch)
 }
 
 func colorToGray(value byte) color.Gray {

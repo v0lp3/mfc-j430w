@@ -37,13 +37,13 @@ func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, 
 
 	status := readPacket(socket)[:7]
 
-	if status != "+OK 200" {
+	if status != scanner.ready {
 		HandleError(fmt.Errorf("invalid reply from scanner: %s", status))
 	}
 
 	log.Println("Leasing options...")
 
-	request := []byte(fmt.Sprintf("\x1bI\nR=%d,%d\nM=%s\n\x80", resolution, resolution, mode))
+	request := []byte(fmt.Sprintf(formats.leaseRequest, resolution, resolution, mode))
 	sendPacket(socket, request)
 
 	offer := readPacket(socket)
@@ -51,7 +51,7 @@ func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, 
 	if !adf {
 		log.Println("Disabling automatic document feeder (ADF)")
 
-		request = []byte("\x1bD\nADF\n\x80")
+		request = []byte(formats.disableADF)
 		sendPacket(socket, request)
 
 		readPacket(socket)
@@ -67,14 +67,13 @@ func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, 
 	fmt.Sscanf(offer[3:], "%d,%d,%d,%d,%d,%d,%d", &dpiX, &dpiY, &adfStatus, &planeWidth, &width, &planeHeight, &height)
 
 	if planeHeight == 0 {
-		planeHeight = 294
+		planeHeight = scanner.A4height
 	}
 
 	width = mmToPixels(planeWidth, dpiX)
 	height = mmToPixels(planeHeight, dpiY)
 
-	requestFormat := "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%d,%d\n\x80"
-	request = []byte(fmt.Sprintf(requestFormat, dpiX, dpiY, mode, compression, width, height))
+	request = []byte(fmt.Sprintf(formats.scanRequest, dpiX, dpiY, mode, compression, width, height))
 
 	sendPacket(socket, request)
 
@@ -121,7 +120,7 @@ func SaveImage(data []byte, width int, height int, name string, color string) {
 
 	_, compression := getCompressionMode(color)
 
-	if compression != "JPEG" {
+	if compression != scanner.compression.jpeg {
 
 		img := image.NewGray(image.Rectangle{
 			image.Point{0, 0},
@@ -149,8 +148,6 @@ func SaveImage(data []byte, width int, height int, name string, color string) {
 func removeHeaders(data []byte) [][]byte {
 	log.Println("Removing headers from bytes...")
 
-	const headerLen int = 12
-
 	pages := make([][]byte, 0)
 	page := make([]byte, 0)
 
@@ -159,11 +156,10 @@ func removeHeaders(data []byte) [][]byte {
 
 headersLoop:
 	for {
-		if data[i] == 0x82 {
-			log.Println("Parsed page", currentPage)
+		if data[i] == scanner.endPage {
 			pages = append(pages, page)
 
-			if len(data) > i+10 && data[i+10] == 0x80 {
+			if len(data) > i+10 && data[i+10] == scanner.endScan {
 				break headersLoop
 			}
 
@@ -171,14 +167,14 @@ headersLoop:
 
 			currentPage++
 
-			i += headerLen - 2
+			i += scanner.headerLen - 2
 			continue headersLoop
 		}
 
-		payloadLen := binary.LittleEndian.Uint16(data[i+headerLen-2 : i+headerLen])
-		chunkSize := int(payloadLen) + headerLen
+		payloadLen := binary.LittleEndian.Uint16(data[i+scanner.headerLen-2 : i+scanner.headerLen])
+		chunkSize := int(payloadLen) + scanner.headerLen
 
-		page = append(page, data[i+headerLen:i+chunkSize]...)
+		page = append(page, data[i+scanner.headerLen:i+chunkSize]...)
 
 		i += chunkSize
 	}
