@@ -4,7 +4,6 @@ import (
 	"image/color"
 	"log"
 	"net"
-	"os"
 )
 
 func sendPacket(socket net.Conn, packet []byte) {
@@ -25,7 +24,6 @@ func HandleError(err error) {
 
 	if err != nil {
 		log.Fatal(err)
-		os.Exit(1)
 	}
 }
 

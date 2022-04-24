@@ -3,8 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"net"
+	"sync"
 )
+
+var wg sync.WaitGroup
 
 func main() {
 	const brotherPort int = 54921
@@ -22,12 +26,14 @@ func main() {
 
 	rawImages, width, heigth := Scan(*brotherIP, brotherPort, *resolution, *color)
 
-	for i, rawImage := range rawImages {
-		if i == len(rawImages)-1 {
-			SaveImage(rawImage, width, heigth, fmt.Sprintf("%s(%d)", *name, i), *color)
+	wg.Add(len(rawImages))
 
-		} else {
-			go SaveImage(rawImage, width, heigth, fmt.Sprintf("%s(%d)", *name, i), *color)
-		}
+	log.Printf("Received %d images\n", len(rawImages))
+
+	for i, rawImage := range rawImages {
+		go SaveImage(rawImage, width, heigth, fmt.Sprintf("%s(%d)", *name, i), *color)
 	}
+
+	wg.Wait()
+
 }
