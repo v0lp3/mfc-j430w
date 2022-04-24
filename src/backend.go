@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func Scan(brotherIP string, brotherPort int, resolution int, color string, adf bool) ([][]byte, int, int) {
+func Scan(brotherIP string, brotherPort int, resolution int, color string) ([][]byte, int, int) {
 	log.Println("Valid IP address, opening socket...")
 
 	socket, err := net.Dial("tcp", fmt.Sprintf("%s:%d", brotherIP, brotherPort))
@@ -20,7 +20,7 @@ func Scan(brotherIP string, brotherPort int, resolution int, color string, adf b
 
 	defer socket.Close()
 
-	width, heigth := sendRequest(socket, resolution, color, adf)
+	width, heigth := sendRequest(socket, resolution, color)
 
 	bytes, err := getScanBytes(socket)
 
@@ -29,7 +29,7 @@ func Scan(brotherIP string, brotherPort int, resolution int, color string, adf b
 	return removeHeaders(bytes), width, heigth
 }
 
-func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, int) {
+func sendRequest(socket net.Conn, resolution int, _mode string) (int, int) {
 
 	mode, compression := getCompressionMode(_mode)
 
@@ -47,15 +47,6 @@ func sendRequest(socket net.Conn, resolution int, _mode string, adf bool) (int, 
 	sendPacket(socket, request)
 
 	offer := readPacket(socket)
-
-	if !adf {
-		log.Println("Disabling automatic document feeder (ADF)")
-
-		request = []byte(formats.disableADF)
-		sendPacket(socket, request)
-
-		readPacket(socket)
-	}
 
 	log.Println("Sending scan request...")
 
