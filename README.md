@@ -8,107 +8,69 @@ _Brother MFC-J430W has already scanner driver and you can download [here](https:
 
 ![protocol](./docs/protocol.png)
 
+### Color Modes
+
+- **GRAY64**: gray scale image
+- **CGRAY**: color image
+- **TEXT**: low resolution mode, **max output (304x434)**
+
+### Compressions
+
+- **JPEG**: JPEG compression
+- **RLENGTH**: Run Length Encoding
+- **NONE**: no compression
+
 ### Status codes
 
-When we open a connection with the scanner on port 54921, it respond with his status code:
+When we open a connection with the scanner on port `54921`, it responds with his status code:
 
 - `+OK 200`: Ready to use
 - `-NG 401`: Scanner is busy
 
 ### Lease
 
-Now we can send a request that specify resolution and color mode, then scanner send to client a offer based on request.
-I called this part `lease because it recalled me _DHCP lease_
+Now we can send a request that specify resolution and color mode, then the scanner sends to client an offer, based on request. The ADF is automatically forced when the scanner detects documents in the feeder. I called this part `lease` because it recalled me _DHCP lease_.
 
-#### REQUEST
 
-```go
-request := []byte(fmt.Sprintf("\x1bI\nR=%d,%d\nM=%s\n\x80", resolution, resolution, mode))
-sendPacket(socket, request)
-```
+### Response
 
-#### RESPONSE
+After we make a request, the scanner sends an offer to client. If we want continue we are ready to start scanning.
 
-`300,300,2,209,2480,294,3472`
+`dpi(x),dpi(y),adf,mm(x),px(x),mm(y),px(y)`
 
-- `response[2]` : ADF status
-
-##### (X,Y)
-
-- `response[0]` `response[1]`: Image DPI
-- `response[3]` `response[5]`: Plane dimensions in _mm_
-- `response[4]` `response[6]`: Image resolution in _px_
-
-##### COLOR MODES
-
-- **GRAY64**: gray scale image
-- **CGRAY**: color image
-- **TEXT**: low resolution mode, **max output (304x434)** [not implemented]
-
-##### RESOLUTIONS A4
-
-- 100x100
-- 150x150
-- 300x300
-- 600x600
-- 1200x1200
-- 1200x2400
-
-##### ADF Status
-
-- 1 ADF enabled
-- 2 ADF disabled
-
-### Automatic document feeder
-
-I think this is the request to disable ADF and **scan only one page**, though It's no effective.
-
-```go
-if !adf {
-  request = []byte("\x1bD\nADF\n\x80")
-  sendPacket(socket, request)
-  readPacket(socket)
-}
-```
+- `dpi`: dots per inch
+- `adf`: automatic document feeder (1=enabled, 2=disabled)
+- `mm`: millimeters (plane width and height)
+- `pixels`: pixels (image width and height)
 
 ## Start scan
 
-Now we are ready to send start scan request:
+The request must contains the following payload:
 
-```go
-width = mmToPixels(planeWidth, dpiX)
-height = mmToPixels(planeHeight, dpiY)
+- **R** = `dpi(x), dpi(y)`
+- **M** = `color mode`
+- **C** = `compression`
+- **J** = MID (?)
+- **B** = `brightness`
+- **N** = `contrast`
+- **A** = `x1,y1,x2,y2` (area)
 
-requestFormat := "\x1bX\nR=%v,%v\nM=%s\nC=%s\nJ=MID\nB=50\nN=50\nA=0,0,%d,%d\n\x80"
-request = []byte(fmt.Sprintf(requestFormat, dpiX, dpiY, mode, compression, width, height))
-```
+**NOTE**: `x2` and `y2` are calculated from plane dimensions because _width_ received from response in [lease phase](#lease) is different from _width calculated_
 
-- **R** = `X_DPI`, `Y_DPI`
-- **M** = `CGRAY` or `GRAY64`
-- **C** = `JPEG` or `RLENGTH` or `NONE`
-- **J** = MID
-- **B** = 50 (Brightness?)
-- **N** = 50 (Contrast?)
-- **A** = 0,0,`WIDTH`, `HEIGHT`
+As you can see the reversing isn't completed at all and i work on it rarely, but work in progress...
 
-**NOTE**: `WIDTH` and `HEIGHT` are calculated from plane dimensions because _width_ received from response in [lease phase](#lease) is different from _width calculated_
+## Protocol implementation
 
-```go
-func mmToPixels(mm int, dpi int) int {
-  return int(float32(mm*dpi) / scanner.mmInch)
-}
-```
+There are still some work to do to implement all functionalities of the scanner, but the major part is done. In this moment the scanning with image compression isn't implemented.
 
-Documentation work in progress...
-
-## Compile
+### Compile
 
 ```bash
 git clone https://github.com/v0lp3/mfc-j430w.git
 go build -o mfc-j430w mfc-j430w/src/*.go
 ```
 
-## Usage
+### Usage
 
 ```bash
 ./mfc-j430w --help
@@ -128,12 +90,6 @@ Usage of ./mfc-j430w:
   -r int
         Resolution of the scan (default 300)
 ```
-
-## To do
-
-- [x] Implement multi page scan for ADF
-- [ ] Improve ADF scan with multithread
-- [ ] Add flag to output compressed image
 
 ## Credits
 
